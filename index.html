@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRT 양방향 변환기</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            font-weight: 300;
+        }
+
+        .header p {
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        .mode-selector {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .mode-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .mode-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .mode-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .input-section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .dual-input {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+        }
+
+        .input-group h3 {
+            color: #4ecdc4;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .upload-area {
+            border: 3px dashed rgba(78, 205, 196, 0.5);
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .upload-area:hover {
+            border-color: #4ecdc4;
+            background: rgba(78, 205, 196, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #4ecdc4;
+            background: rgba(78, 205, 196, 0.15);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .upload-title {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+
+        .upload-subtitle {
+            color: #888;
+            margin-bottom: 1.5rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .input-textarea {
+            width: 100%;
+            min-height: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-textarea:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.2);
+        }
+
+        .input-textarea::placeholder {
+            color: #666;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            padding: 0.8rem 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .convert-btn {
+            background: linear-gradient(45deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .clear-btn {
+            background: linear-gradient(45deg, #616161 0%, #9bc5c3 100%);
+        }
+
+        .file-info {
+            background: rgba(78, 205, 196, 0.1);
+            border: 1px solid rgba(78, 205, 196, 0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .file-info h4 {
+            color: #4ecdc4;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .file-info p {
+            color: #ccc;
+            margin: 0.2rem 0;
+            font-size: 0.8rem;
+        }
+
+        .status {
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: rgba(78, 205, 196, 0.2);
+            border: 1px solid #4ecdc4;
+            color: #4ecdc4;
+        }
+
+        .status.error {
+            background: rgba(255, 107, 107, 0.2);
+            border: 1px solid #ff6b6b;
+            color: #ff6b6b;
+        }
+
+        .result-section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .result-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .result-title {
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .copy-btn {
+            background: linear-gradient(45deg, #ff6b6b 0%, #ff8e53 100%);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .download-btn {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .result-text {
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            border: none;
+            resize: none;
+            width: 100%;
+            min-height: 300px;
+            max-height: 70vh;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.95rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            overflow-y: auto;
+        }
+
+        .result-text:focus {
+            outline: none;
+        }
+
+        .help-section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .help-title {
+            color: #4ecdc4;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .help-content {
+            color: #ccc;
+            line-height: 1.6;
+        }
+
+        .help-example {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .mode-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .mode-btn {
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .dual-input {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .input-section {
+                padding: 1.5rem;
+            }
+
+            .upload-area {
+                padding: 1.5rem;
+            }
+
+            .upload-icon {
+                font-size: 2rem;
+            }
+
+            .btn {
+                padding: 0.8rem 1.5rem;
+                font-size: 0.9rem;
+            }
+
+            .result-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .result-actions {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .result-text {
+                padding: 1.5rem;
+                font-size: 0.85rem;
+                min-height: 250px;
+                max-height: 60vh;
+            }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 SRT 양방향 변환기</h1>
+            <p>SRT 파일과 간단 텍스트 간의 양방향 변환</p>
+        </div>
+
+        <div class="mode-selector">
+            <div class="mode-buttons">
+                <button class="mode-btn active" data-mode="srt-to-text">
+                    📝 SRT → 간단 텍스트
+                </button>
+                <button class="mode-btn" data-mode="text-to-srt">
+                    🎬 간단 텍스트 → SRT
+                </button>
+            </div>
+        </div>
+
+        <!-- SRT → 간단 텍스트 탭 -->
+        <div class="tab-content active" id="srt-to-text-tab">
+            <div class="help-section">
+                <div class="help-title">📖 SRT → 간단 텍스트</div>
+                <div class="help-content">
+                    <p>SRT 파일을 업로드하거나 내용을 붙여넣어서 타임코드를 제거하고 인덱스와 텍스트만 추출합니다.</p>
+                    <div class="help-example">원본 SRT:
+1
+00:00:01,000 --> 00:00:03,000
+안녕하세요
+
+변환 결과:
+1
+안녕하세요</div>
+                </div>
+            </div>
+            
+            <div class="input-section">
+                <div class="upload-area" id="uploadArea1">
+                    <div class="upload-icon">📁</div>
+                    <h3 class="upload-title">SRT 파일을 업로드하세요</h3>
+                    <p class="upload-subtitle">파일을 드래그하거나 클릭하여 선택하세요</p>
+                    <button class="btn upload-btn" onclick="document.getElementById('fileInput1').click()">
+                        파일 선택
+                    </button>
+                    <input type="file" id="fileInput1" class="file-input" accept=".srt" />
+                </div>
+
+                <div style="text-align: center; margin: 1.5rem 0; color: #888; font-size: 1.1rem;">
+                    또는
+                </div>
+
+                <textarea 
+                    class="input-textarea" 
+                    id="inputText1" 
+                    placeholder="여기에 SRT 내용을 붙여넣거나 직접 입력하세요...&#10;&#10;예시:&#10;1&#10;00:00:01,000 --> 00:00:03,000&#10;안녕하세요&#10;&#10;2&#10;00:00:04,000 --> 00:00:06,000&#10;반갑습니다"
+                ></textarea>
+
+                <div class="file-info" id="fileInfo1">
+                    <h4>📄 파일 정보</h4>
+                    <p id="fileName1"></p>
+                    <p id="fileSize1"></p>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn convert-btn" id="convertBtn1">🔄 변환하기</button>
+                    <button class="btn clear-btn" id="clearBtn1">🗑️ 지우기</button>
+                </div>
+
+                <div id="statusContainer1"></div>
+            </div>
+        </div>
+
+        <!-- 간단 텍스트 → SRT 탭 -->
+        <div class="tab-content" id="text-to-srt-tab">
+            <div class="help-section">
+                <div class="help-title">📖 간단 텍스트 → SRT</div>
+                <div class="help-content">
+                    <p>원본 SRT 파일과 대치할 텍스트를 각각 입력하면, 타임코드는 유지하고 텍스트만 교체된 새로운 SRT를 생성합니다.</p>
+                    <div class="help-example">원본 SRT + 대치 텍스트 → 새로운 SRT
+(타임코드는 원본 그대로, 텍스트만 교체)</div>
+                </div>
+            </div>
+
+            <div class="input-section">
+                <div class="dual-input">
+                    <div class="input-group">
+                        <h3>🎬 원본 SRT</h3>
+                        <div class="upload-area" id="uploadArea2">
+                            <div class="upload-icon">📁</div>
+                            <h4 class="upload-title">원본 SRT 업로드</h4>
+                            <button class="btn upload-btn" onclick="document.getElementById('fileInput2').click()">
+                                파일 선택
+                            </button>
+                            <input type="file" id="fileInput2" class="file-input" accept=".srt" />
+                        </div>
+                        
+                        <div style="text-align: center; margin: 1rem 0; color: #888;">또는</div>
+                        
+                        <textarea 
+                            class="input-textarea" 
+                            id="originalSrtText" 
+                            placeholder="원본 SRT 내용을 붙여넣으세요...&#10;&#10;예시:&#10;1&#10;00:00:01,000 --> 00:00:03,000&#10;안녕하세요&#10;&#10;2&#10;00:00:04,000 --> 00:00:06,000&#10;반갑습니다"
+                            style="min-height: 150px;"
+                        ></textarea>
+
+                        <div class="file-info" id="fileInfo2">
+                            <h4>📄 파일 정보</h4>
+                            <p id="fileName2"></p>
+                            <p id="fileSize2"></p>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <h3>✏️ 대치할 텍스트</h3>
+                        <textarea 
+                            class="input-textarea" 
+                            id="replacementText" 
+                            placeholder="인덱스와 텍스트를 입력하세요...&#10;&#10;예시:&#10;1&#10;수정된 첫 번째 텍스트&#10;&#10;2&#10;수정된 두 번째 텍스트"
+                            style="min-height: 300px;"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn convert-btn" id="convertBtn2">🔄 SRT 생성하기</button>
+                    <button class="btn clear-btn" id="clearBtn2">🗑️ 지우기</button>
+                </div>
+
+                <div id="statusContainer2"></div>
+            </div>
+        </div>
+
+        <div class="result-section" id="resultArea">
+            <div class="result-header">
+                <div class="result-title" id="resultTitle">✨ 변환 결과</div>
+                <div class="result-actions">
+                    <button class="copy-btn" id="copyBtn">📋 복사</button>
+                    <button class="download-btn" id="downloadBtn">💾 다운로드</button>
+                </div>
+            </div>
+            <textarea class="result-text" id="resultText" readonly></textarea>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'srt-to-text';
+
+        const elements = {
+            modeButtons: document.querySelectorAll('.mode-btn'),
+            tabContents: document.querySelectorAll('.tab-content'),
+            
+            // Tab 1 elements
+            uploadArea1: document.getElementById('uploadArea1'),
+            fileInput1: document.getElementById('fileInput1'),
+            inputText1: document.getElementById('inputText1'),
+            fileInfo1: document.getElementById('fileInfo1'),
+            fileName1: document.getElementById('fileName1'),
+            fileSize1: document.getElementById('fileSize1'),
+            convertBtn1: document.getElementById('convertBtn1'),
+            clearBtn1: document.getElementById('clearBtn1'),
+            statusContainer1: document.getElementById('statusContainer1'),
+            
+            // Tab 2 elements
+            uploadArea2: document.getElementById('uploadArea2'),
+            fileInput2: document.getElementById('fileInput2'),
+            originalSrtText: document.getElementById('originalSrtText'),
+            replacementText: document.getElementById('replacementText'),
+            fileInfo2: document.getElementById('fileInfo2'),
+            fileName2: document.getElementById('fileName2'),
+            fileSize2: document.getElementById('fileSize2'),
+            convertBtn2: document.getElementById('convertBtn2'),
+            clearBtn2: document.getElementById('clearBtn2'),
+            statusContainer2: document.getElementById('statusContainer2'),
+            
+            // Common elements
+            resultArea: document.getElementById('resultArea'),
+            resultText: document.getElementById('resultText'),
+            copyBtn: document.getElementById('copyBtn'),
+            downloadBtn: document.getElementById('downloadBtn'),
+            resultTitle: document.getElementById('resultTitle')
+        };
+
+        // 모드 전환
+        elements.modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                elements.modeButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentMode = btn.dataset.mode;
+                switchTab();
+            });
+        });
+
+        function switchTab() {
+            elements.tabContents.forEach(tab => tab.classList.remove('active'));
+            document.getElementById(currentMode + '-tab').classList.add('active');
+            elements.resultArea.style.display = 'none';
+        }
+
+        // Tab 1: 드래그 앤 드롭 (SRT → 간단 텍스트)
+        setupFileUpload(elements.uploadArea1, elements.fileInput1, elements.inputText1, elements.fileInfo1, elements.fileName1, elements.fileSize1, elements.statusContainer1);
+
+        // Tab 2: 드래그 앤 드롭 (원본 SRT 업로드)
+        setupFileUpload(elements.uploadArea2, elements.fileInput2, elements.originalSrtText, elements.fileInfo2, elements.fileName2, elements.fileSize2, elements.statusContainer2);
+
+        function setupFileUpload(uploadArea, fileInput, textArea, fileInfo, fileName, fileSize, statusContainer) {
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0], textArea, fileInfo, fileName, fileSize, statusContainer);
+                }
+            });
+
+            uploadArea.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0], textArea, fileInfo, fileName, fileSize, statusContainer);
+                }
+            });
+        }
+
+        function handleFile(file, textArea, fileInfo, fileName, fileSize, statusContainer) {
+            if (!file.name.toLowerCase().endsWith('.srt')) {
+                showStatus('SRT 파일만 업로드 가능합니다.', 'error', statusContainer);
+                return;
+            }
+
+            fileName.textContent = `파일명: ${file.name}`;
+            fileSize.textContent = `크기: ${(file.size / 1024).toFixed(2)} KB`;
+            fileInfo.style.display = 'block';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                textArea.value = e.target.result;
+                showStatus('파일이 로드되었습니다.', 'success', statusContainer);
+            };
+
+            reader.onerror = function() {
+                showStatus('파일을 읽을 수 없습니다.', 'error', statusContainer);
+            };
+
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        // Tab 1: SRT → 간단 텍스트 변환
+        elements.convertBtn1.addEventListener('click', () => {
+            const inputContent = elements.inputText1.value.trim();
+            if (!inputContent) {
+                showStatus('변환할 SRT 내용을 입력하세요.', 'error', elements.statusContainer1);
+                return;
+            }
+
+            try {
+                const result = convertSRTToText(inputContent);
+                elements.resultText.value = result;
+                elements.resultTitle.textContent = '✨ 변환 결과 (간단 텍스트)';
+                elements.resultArea.style.display = 'block';
+                showStatus('변환이 완료되었습니다!', 'success', elements.statusContainer1);
+                elements.resultArea.scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                showStatus('변환 중 오류가 발생했습니다: ' + error.message, 'error', elements.statusContainer1);
+            }
+        });
+
+        // Tab 2: 간단 텍스트 → SRT 변환
+        elements.convertBtn2.addEventListener('click', () => {
+            const originalSrt = elements.originalSrtText.value.trim();
+            const replacementText = elements.replacementText.value.trim();
+
+            if (!originalSrt) {
+                showStatus('원본 SRT 내용을 입력하세요.', 'error', elements.statusContainer2);
+                return;
+            }
+
+            if (!replacementText) {
+                showStatus('대치할 텍스트를 입력하세요.', 'error', elements.statusContainer2);
+                return;
+            }
+
+            try {
+                const result = convertTextToSRT(originalSrt, replacementText);
+                elements.resultText.value = result;
+                elements.resultTitle.textContent = '🎬 생성된 SRT';
+                elements.resultArea.style.display = 'block';
+                showStatus('SRT 생성이 완료되었습니다!', 'success', elements.statusContainer2);
+                elements.resultArea.scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                showStatus('변환 중 오류가 발생했습니다: ' + error.message, 'error', elements.statusContainer2);
+            }
+        });
+
+        // 지우기 버튼들
+        elements.clearBtn1.addEventListener('click', () => {
+            elements.inputText1.value = '';
+            clearResults();
+            elements.fileInfo1.style.display = 'none';
+            elements.statusContainer1.innerHTML = '';
+            elements.fileInput1.value = '';
+        });
+
+        elements.clearBtn2.addEventListener('click', () => {
+            elements.originalSrtText.value = '';
+            elements.replacementText.value = '';
+            clearResults();
+            elements.fileInfo2.style.display = 'none';
+            elements.statusContainer2.innerHTML = '';
+            elements.fileInput2.value = '';
+        });
+
+        // 복사 버튼
+        elements.copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(elements.resultText.value);
+                
+                const originalText = elements.copyBtn.textContent;
+                elements.copyBtn.textContent = '✅ 복사됨!';
+                elements.copyBtn.style.background = 'linear-gradient(45deg, #11998e 0%, #38ef7d 100%)';
+                
+                setTimeout(() => {
+                    elements.copyBtn.textContent = originalText;
+                    elements.copyBtn.style.background = 'linear-gradient(45deg, #ff6b6b 0%, #ff8e53 100%)';
+                }, 2000);
+
+                const statusContainer = currentMode === 'srt-to-text' ? elements.statusContainer1 : elements.statusContainer2;
+                showStatus('클립보드에 복사되었습니다!', 'success', statusContainer);
+            } catch (err) {
+                elements.resultText.select();
+                document.execCommand('copy');
+                const statusContainer = currentMode === 'srt-to-text' ? elements.statusContainer1 : elements.statusContainer2;
+                showStatus('클립보드에 복사되었습니다!', 'success', statusContainer);
+            }
+        });
+
+        // 다운로드 버튼
+        elements.downloadBtn.addEventListener('click', () => {
+            if (!elements.resultText.value.trim()) {
+                const statusContainer = currentMode === 'srt-to-text' ? elements.statusContainer1 : elements.statusContainer2;
+                showStatus('다운로드할 내용이 없습니다.', 'error', statusContainer);
+                return;
+            }
+
+            try {
+                const content = elements.resultText.value;
+                let filename, mimeType;
+
+                if (currentMode === 'srt-to-text') {
+                    filename = 'extracted_text.txt';
+                    mimeType = 'text/plain';
+                } else {
+                    filename = 'converted_subtitle.srt';
+                    mimeType = 'text/plain';
+                }
+
+                const blob = new Blob([content], { type: mimeType + ';charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.display = 'none';
+                
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                URL.revokeObjectURL(url);
+
+                const statusContainer = currentMode === 'srt-to-text' ? elements.statusContainer1 : elements.statusContainer2;
+                showStatus(`파일이 다운로드되었습니다: ${filename}`, 'success', statusContainer);
+
+                // 다운로드 버튼 피드백
+                const originalText = elements.downloadBtn.textContent;
+                elements.downloadBtn.textContent = '✅ 다운로드됨!';
+                elements.downloadBtn.style.background = 'linear-gradient(45deg, #11998e 0%, #38ef7d 100%)';
+                
+                setTimeout(() => {
+                    elements.downloadBtn.textContent = originalText;
+                    elements.downloadBtn.style.background = 'linear-gradient(45deg, #667eea 0%, #764ba2 100%)';
+                }, 2000);
+
+            } catch (error) {
+                const statusContainer = currentMode === 'srt-to-text' ? elements.statusContainer1 : elements.statusContainer2;
+                showStatus('다운로드 중 오류가 발생했습니다.', 'error', statusContainer);
+                console.error('Download error:', error);
+            }
+        });
+
+        function clearResults() {
+            elements.resultText.value = '';
+            elements.resultArea.style.display = 'none';
+        }
+
+        // SRT에서 텍스트로 변환
+        function convertSRTToText(srtContent) {
+            const blocks = srtContent.trim().split(/\n\s*\n/);
+            const result = [];
+
+            blocks.forEach(block => {
+                const lines = block.trim().split('\n');
+                if (lines.length >= 3) {
+                    const index = lines[0].trim();
+                    const text = lines.slice(2).join(' ').trim();
+                    
+                    if (index && text) {
+                        result.push(`${index}\n${text}`);
+                    }
+                }
+            });
+
+            if (result.length === 0) {
+                throw new Error('올바른 SRT 형식이 아닙니다.');
+            }
+
+            return result.join('\n\n');
+        }
+
+        // 텍스트에서 SRT로 변환
+        function convertTextToSRT(originalSrt, replacementText) {
+            // 원본 SRT에서 타임코드 정보 추출
+            const originalBlocks = originalSrt.trim().split(/\n\s*\n/);
+            const timeCodeMap = new Map();
+
+            originalBlocks.forEach(block => {
+                const lines = block.trim().split('\n');
+                if (lines.length >= 3 && lines[1].includes('-->')) {
+                    const index = lines[0].trim();
+                    const timeCode = lines[1].trim();
+                    timeCodeMap.set(index, timeCode);
+                }
+            });
+
+            if (timeCodeMap.size === 0) {
+                throw new Error('원본 SRT에서 타임코드를 찾을 수 없습니다.');
+            }
+
+            // 대치할 텍스트 파싱
+            const textBlocks = replacementText.trim().split(/\n\s*\n/);
+            const textMap = new Map();
+
+            textBlocks.forEach(block => {
+                const lines = block.trim().split('\n');
+                if (lines.length >= 2) {
+                    const index = lines[0].trim();
+                    const text = lines.slice(1).join(' ').trim();
+                    textMap.set(index, text);
+                }
+            });
+
+            if (textMap.size === 0) {
+                throw new Error('대치할 텍스트가 올바른 형식이 아닙니다.');
+            }
+
+            // 새로운 SRT 생성
+            const result = [];
+            for (const [index, timeCode] of timeCodeMap) {
+                const newText = textMap.get(index) || `[${index}번 텍스트 없음]`;
+                result.push(`${index}\n${timeCode}\n${newText}`);
+            }
+
+            return result.join('\n\n');
+        }
+
+        function showStatus(message, type, container) {
+            const statusEl = document.createElement('div');
+            statusEl.className = `status ${type}`;
+            statusEl.textContent = message;
+            
+            container.innerHTML = '';
+            container.appendChild(statusEl);
+            
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 4000);
+        }
+    </script>
+</body>
+</html>
